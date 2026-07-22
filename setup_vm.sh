@@ -16,7 +16,7 @@ source .hamer/bin/activate
 ./.hamer/bin/pip install wheel ninja gdown
 
 echo "[3/4] Installing PyTorch and HaMeR dependencies..."
-./.hamer/bin/pip install torch torchvision --index-url https://download.pytorch.org/whl/cu117
+./.hamer/bin/pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 ./.hamer/bin/pip install 'git+https://github.com/facebookresearch/detectron2.git' --no-build-isolation
 ./.hamer/bin/pip install --no-build-isolation -e .[all]
 ./.hamer/bin/pip install --no-build-isolation -v -e third-party/ViTPose
