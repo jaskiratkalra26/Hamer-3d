@@ -13,12 +13,13 @@ echo "[2/4] Setting up Python virtual environment..."
 python3 -m venv .hamer
 source .hamer/bin/activate
 ./.hamer/bin/pip install --upgrade pip
-./.hamer/bin/pip install wheel ninja gdown
+./.hamer/bin/pip install wheel ninja gdown setuptools
 
 echo "[3/4] Installing PyTorch and HaMeR dependencies..."
 ./.hamer/bin/pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 ./.hamer/bin/pip install 'git+https://github.com/facebookresearch/detectron2.git' --no-build-isolation
 ./.hamer/bin/pip install 'git+https://github.com/mattloper/chumpy' --no-build-isolation
+./.hamer/bin/pip install mmcv --no-build-isolation
 ./.hamer/bin/pip install -e .[all]
 ./.hamer/bin/pip install -v -e third-party/ViTPose
 
