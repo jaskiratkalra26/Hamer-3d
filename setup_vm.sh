@@ -19,6 +19,7 @@ echo "[3/4] Installing PyTorch and HaMeR dependencies..."
 # Using cu118 or cu121 depending on standard setups, cu117 is from standard docs but cu118/121 is usually safer on L4.
 # Falling back to the repo's recommended cu117
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu117
+pip install 'git+https://github.com/facebookresearch/detectron2.git' --no-build-isolation
 pip install -e .[all]
 pip install -v -e third-party/ViTPose
 
