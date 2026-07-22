@@ -23,6 +23,7 @@ def main():
     parser.add_argument('--rescale_factor', type=float, default=2.0, help='Factor for padding the bbox')
     parser.add_argument('--body_detector', type=str, default='vitdet', choices=['vitdet', 'regnety'])
     parser.add_argument('--max_seconds', type=int, default=0, help='Max seconds of video to process')
+    parser.add_argument('--det_stride', type=int, default=3, help='Run body detector every N frames for speed')
     args = parser.parse_args()
 
     # Setup device
@@ -78,23 +79,34 @@ def main():
     if args.max_seconds > 0:
         max_frames = min(total_frames, int(fps * args.max_seconds))
     
-    print(f"Processing {max_frames} frames...")
+    print(f"Processing {max_frames} frames with detector stride={args.det_stride}...")
     
+    last_pred_bboxes = None
+    last_pred_scores = None
+
     for frame_idx in tqdm(range(max_frames)):
         ret, frame = cap.read()
         if not ret:
             break
 
         img_cv2 = frame
-        det_out = detector(img_cv2)
         img = img_cv2.copy()[:, :, ::-1]
 
-        det_instances = det_out['instances']
-        valid_idx = (det_instances.pred_classes==0) & (det_instances.scores > 0.5)
-        pred_bboxes=det_instances.pred_boxes.tensor[valid_idx].cpu().numpy()
-        pred_scores=det_instances.scores[valid_idx].cpu().numpy()
+        # Run heavy ViTDet body detector every N frames for maximum speed
+        if frame_idx % args.det_stride == 0 or last_pred_bboxes is None:
+            det_out = detector(img_cv2)
+            det_instances = det_out['instances']
+            valid_idx = (det_instances.pred_classes == 0) & (det_instances.scores > 0.5)
+            pred_bboxes = det_instances.pred_boxes.tensor[valid_idx].cpu().numpy()
+            pred_scores = det_instances.scores[valid_idx].cpu().numpy()
+            if len(pred_bboxes) > 0:
+                last_pred_bboxes = pred_bboxes
+                last_pred_scores = pred_scores
+        else:
+            pred_bboxes = last_pred_bboxes
+            pred_scores = last_pred_scores
 
-        if len(pred_bboxes) == 0:
+        if pred_bboxes is None or len(pred_bboxes) == 0:
             out.write(frame)
             continue
 
@@ -108,15 +120,15 @@ def main():
             right_hand_keyp = vitposes['keypoints'][-21:]
 
             keyp = left_hand_keyp
-            valid = keyp[:,2] > 0.5
+            valid = keyp[:, 2] > 0.5
             if sum(valid) > 3:
-                bboxes.append([keyp[valid,0].min(), keyp[valid,1].min(), keyp[valid,0].max(), keyp[valid,1].max()])
+                bboxes.append([keyp[valid, 0].min(), keyp[valid, 1].min(), keyp[valid, 0].max(), keyp[valid, 1].max()])
                 is_right.append(0)
             
             keyp = right_hand_keyp
-            valid = keyp[:,2] > 0.5
+            valid = keyp[:, 2] > 0.5
             if sum(valid) > 3:
-                bboxes.append([keyp[valid,0].min(), keyp[valid,1].min(), keyp[valid,0].max(), keyp[valid,1].max()])
+                bboxes.append([keyp[valid, 0].min(), keyp[valid, 1].min(), keyp[valid, 0].max(), keyp[valid, 1].max()])
                 is_right.append(1)
 
         if len(bboxes) == 0:
@@ -138,7 +150,8 @@ def main():
         for batch in dataloader:
             batch = recursive_to(batch, device)
             with torch.no_grad():
-                out_hamer = model(batch)
+                with torch.cuda.amp.autocast(enabled=torch.cuda.is_available()):
+                    out_hamer = model(batch)
 
             multiplier = (2*batch['right']-1)
             pred_cam = out_hamer['pred_cam']
