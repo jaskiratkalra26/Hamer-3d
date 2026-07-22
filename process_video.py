@@ -167,7 +167,7 @@ def main():
                 scene_bg_color=(1, 1, 1),
                 focal_length=scaled_focal_length_val,
             )
-            cam_view = renderer.render_rgba_multiple(all_verts, cam_t=all_cam_t, render_res=img_size_batch, is_right=all_right, **misc_args)
+            cam_view = renderer.render_rgba_multiple(all_verts, cam_t=all_cam_t, render_res=[width, height], is_right=all_right, **misc_args)
 
             input_img = img_cv2.astype(np.float32)[:,:,::-1]/255.0
             input_img = np.concatenate([input_img, np.ones_like(input_img[:,:,:1])], axis=2)

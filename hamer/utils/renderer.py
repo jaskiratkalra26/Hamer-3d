@@ -397,7 +397,7 @@ class Renderer:
                     t_arr = t_arr.detach().cpu().numpy()
                     
                 pts3d = v_arr + t_arr
-                pts3d[:, 0] *= -1.0
+                
                 z = np.maximum(pts3d[:, 2], 1e-5)
                 x2d = (focal_length * (pts3d[:, 0] / z) + cx).astype(np.int32)
                 y2d = (focal_length * (pts3d[:, 1] / z) + cy).astype(np.int32)
