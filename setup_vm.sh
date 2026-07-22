@@ -13,7 +13,7 @@ echo "[2/4] Setting up Python virtual environment..."
 python3 -m venv .hamer
 source .hamer/bin/activate
 ./.hamer/bin/pip install --upgrade pip
-./.hamer/bin/pip install gdown
+./.hamer/bin/pip install wheel ninja gdown
 
 echo "[3/4] Installing PyTorch and HaMeR dependencies..."
 ./.hamer/bin/pip install torch torchvision --index-url https://download.pytorch.org/whl/cu117
