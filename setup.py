@@ -18,7 +18,7 @@ setup(
         'yacs',
         'detectron2',
         'chumpy',
-        'mmcv==1.3.9',
+        'mmcv',
         'timm',
         'einops',
         'xtcocotools',
