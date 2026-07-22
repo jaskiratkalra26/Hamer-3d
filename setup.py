@@ -17,7 +17,7 @@ setup(
         'torchvision',
         'yacs',
         'detectron2',
-        'chumpy @ git+https://github.com/mattloper/chumpy',
+        'chumpy',
         'mmcv==1.3.9',
         'timm',
         'einops',
