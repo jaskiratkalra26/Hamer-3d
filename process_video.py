@@ -22,6 +22,7 @@ def main():
     parser.add_argument('--checkpoint', type=str, default=DEFAULT_CHECKPOINT, help='Path to pretrained model checkpoint')
     parser.add_argument('--rescale_factor', type=float, default=2.0, help='Factor for padding the bbox')
     parser.add_argument('--body_detector', type=str, default='vitdet', choices=['vitdet', 'regnety'])
+    parser.add_argument('--max_seconds', type=int, default=0, help='Max seconds of video to process')
     args = parser.parse_args()
 
     # Setup device
@@ -73,9 +74,13 @@ def main():
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out = cv2.VideoWriter(args.out_video, fourcc, fps, (width, height))
 
-    print(f"Processing {total_frames} frames...")
+    max_frames = total_frames
+    if args.max_seconds > 0:
+        max_frames = min(total_frames, int(fps * args.max_seconds))
     
-    for _ in tqdm(range(total_frames)):
+    print(f"Processing {max_frames} frames...")
+    
+    for frame_idx in tqdm(range(max_frames)):
         ret, frame = cap.read()
         if not ret:
             break
