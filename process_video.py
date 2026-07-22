@@ -149,8 +149,8 @@ def main():
             scaled_focal_length = model_cfg.EXTRA.FOCAL_LENGTH / model_cfg.MODEL.IMAGE_SIZE * img_size.max()
             pred_cam_t_full = cam_crop_to_full(pred_cam, box_center, box_size, img_size, scaled_focal_length).detach().cpu().numpy()
 
-            img_size_batch = img_size[0]
-            scaled_focal_length_val = scaled_focal_length
+            img_size_batch = img_size[0].detach().cpu().numpy().astype(int)
+            scaled_focal_length_val = scaled_focal_length.item() if isinstance(scaled_focal_length, torch.Tensor) else float(scaled_focal_length)
             
             batch_size = batch['img'].shape[0]
             for n in range(batch_size):

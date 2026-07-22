@@ -46,9 +46,7 @@ class MeshRenderer:
         self.cfg = cfg
         self.focal_length = cfg.EXTRA.FOCAL_LENGTH
         self.img_res = cfg.MODEL.IMAGE_SIZE
-        self.renderer = pyrender.OffscreenRenderer(viewport_width=self.img_res,
-                                       viewport_height=self.img_res,
-                                       point_size=1.0)
+        self.renderer = None
         
         self.camera_center = [self.img_res // 2, self.img_res // 2]
         self.faces = faces
