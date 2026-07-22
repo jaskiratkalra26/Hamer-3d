@@ -28,8 +28,12 @@ bash fetch_demo_data.sh
 
 # 2. Download MANO weights from user's Drive
 mkdir -p _DATA/data/mano
-echo "Downloading MANO weights..."
-gdown 1VieuI7JEWvZiMjxTyu8WJmKoFrZhVIGK -O _DATA/data/mano/MANO_RIGHT.pkl
+echo "Downloading MANO weights (ZIP)..."
+gdown 1VieuI7JEWvZiMjxTyu8WJmKoFrZhVIGK -O mano_temp.zip
+unzip -o mano_temp.zip -d mano_extracted
+# Find MANO_RIGHT.pkl inside the extracted folder and move it
+find mano_extracted -name "MANO_RIGHT.pkl" -exec mv {} _DATA/data/mano/ \;
+rm -rf mano_temp.zip mano_extracted
 
 # 3. Download the test video
 echo "Downloading test video..."
