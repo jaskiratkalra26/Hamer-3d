@@ -1,9 +1,15 @@
+import sys
 import os
 import cv2
 import numpy as np
 import torch
 from pathlib import Path
 from typing import Dict, List, Any, Optional
+
+# Auto-resolve repository root so hamer and vitpose_model modules are always found
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
 
 from hamer.configs import CACHE_DIR_HAMER
 from hamer.models import download_models, load_hamer, DEFAULT_CHECKPOINT

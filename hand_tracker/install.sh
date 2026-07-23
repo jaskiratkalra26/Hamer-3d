@@ -20,7 +20,8 @@ if [ ! -f /swapfile ]; then
 fi
 
 # 2. Setup Virtual Environment
-echo "[2/4] Setting up Python dependencies..."
+echo "[2/4] Setting up Python dependencies & submodules..."
+git submodule update --init --recursive || true
 python3 -m venv .venv_hand_tracker
 source .venv_hand_tracker/bin/activate
 pip install --upgrade pip
