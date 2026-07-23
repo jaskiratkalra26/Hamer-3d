@@ -76,8 +76,8 @@ class ViTDetDataset(torch.utils.data.Dataset):
         img_patch = convert_cvimg_to_tensor(img_patch_cv)
 
         # apply normalization (vectorized)
-        mean_t = torch.tensor(self.mean, dtype=img_patch.dtype).view(3, 1, 1)
-        std_t = torch.tensor(self.std, dtype=img_patch.dtype).view(3, 1, 1)
+        mean_t = torch.tensor(self.mean, dtype=torch.float32).view(3, 1, 1)
+        std_t = torch.tensor(self.std, dtype=torch.float32).view(3, 1, 1)
         img_patch = (img_patch - mean_t) / std_t
 
         item = {
