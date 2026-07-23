@@ -26,6 +26,7 @@ def main():
     parser.add_argument('--max_seconds', type=int, default=0, help='Max seconds of video to process')
     parser.add_argument('--det_stride', type=int, default=3, help='Run body detector every N frames for speed')
     parser.add_argument('--scale_inference', type=float, default=1.0, help='Downscale frame for detector inference for speed (e.g. 0.5 for 540p, 0.67 for 720p)')
+    parser.add_argument('--compile', action='store_true', help='Use PyTorch 2.0 torch.compile for 2x GPU speedup')
     args = parser.parse_args()
 
     # Setup device
@@ -37,6 +38,16 @@ def main():
     model, model_cfg = load_hamer(args.checkpoint)
     model = model.to(device)
     model.eval()
+
+    if args.compile:
+        if hasattr(torch, 'compile'):
+            print("Compiling HaMeR model with PyTorch 2.0 TorchInductor (fusing CUDA kernels)...")
+            try:
+                model = torch.compile(model)
+            except Exception as e:
+                print(f"torch.compile warning: {e}. Running eager mode.")
+        else:
+            print("PyTorch version does not support torch.compile. Running eager mode.")
 
     # Load Body Detector
     from hamer.utils.utils_detectron2 import DefaultPredictor_Lazy
