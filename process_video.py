@@ -1,5 +1,6 @@
 import argparse
 import os
+import time
 import cv2
 import numpy as np
 import torch
@@ -84,6 +85,7 @@ def main():
     
     last_boxes = None
     last_right = None
+    start_time = time.time()
 
     for frame_idx in tqdm(range(max_frames)):
         ret, frame = cap.read()
@@ -204,7 +206,18 @@ def main():
 
     cap.release()
     out.release()
-    print(f"Video saved to {args.out_video}")
+    
+    total_time = time.time() - start_time
+    avg_fps = max_frames / max(total_time, 1e-5)
+    avg_ms = (total_time / max_frames) * 1000
+    
+    print("\n==================================================")
+    print(f" Processing Complete! 🎉")
+    print(f" Total Frames Processed:   {max_frames}")
+    print(f" Total Time Taken:         {total_time:.2f} seconds ({total_time/60:.2f} minutes)")
+    print(f" Average Processing Speed: {avg_fps:.2f} FPS ({avg_ms:.1f} ms/frame)")
+    print(f" Output Video Saved To:    {args.out_video}")
+    print("==================================================")
 
 if __name__ == '__main__':
     main()
