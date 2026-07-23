@@ -343,71 +343,75 @@ class Renderer:
             focal_length=None,
             is_right=None,
         ):
-        try:
-            renderer = pyrender.OffscreenRenderer(viewport_width=render_res[0],
-                                                  viewport_height=render_res[1],
-                                                  point_size=1.0)
-            if is_right is None:
-                is_right = [1 for _ in range(len(vertices))]
+        if not getattr(self, 'use_fallback', False):
+            try:
+                renderer = pyrender.OffscreenRenderer(viewport_width=render_res[0],
+                                                      viewport_height=render_res[1],
+                                                      point_size=1.0)
+                if is_right is None:
+                    is_right = [1 for _ in range(len(vertices))]
 
-            mesh_list = [pyrender.Mesh.from_trimesh(self.vertices_to_trimesh(vvv, ttt.copy(), mesh_base_color, rot_axis, rot_angle, is_right=sss)) for vvv,ttt,sss in zip(vertices, cam_t, is_right)]
+                mesh_list = [pyrender.Mesh.from_trimesh(self.vertices_to_trimesh(vvv, ttt.copy(), mesh_base_color, rot_axis, rot_angle, is_right=sss)) for vvv,ttt,sss in zip(vertices, cam_t, is_right)]
 
-            scene = pyrender.Scene(bg_color=[*scene_bg_color, 0.0],
-                                   ambient_light=(0.3, 0.3, 0.3))
-            for i,mesh in enumerate(mesh_list):
-                scene.add(mesh, f'mesh_{i}')
+                scene = pyrender.Scene(bg_color=[*scene_bg_color, 0.0],
+                                       ambient_light=(0.3, 0.3, 0.3))
+                for i,mesh in enumerate(mesh_list):
+                    scene.add(mesh, f'mesh_{i}')
 
-            camera_pose = np.eye(4)
-            camera_center = [render_res[0] / 2., render_res[1] / 2.]
-            focal_length = focal_length if focal_length is not None else self.focal_length
-            camera = pyrender.IntrinsicsCamera(fx=focal_length, fy=focal_length,
-                                               cx=camera_center[0], cy=camera_center[1], zfar=1e12)
+                camera_pose = np.eye(4)
+                camera_center = [render_res[0] / 2., render_res[1] / 2.]
+                focal_length = focal_length if focal_length is not None else self.focal_length
+                camera = pyrender.IntrinsicsCamera(fx=focal_length, fy=focal_length,
+                                                   cx=camera_center[0], cy=camera_center[1], zfar=1e12)
 
-            camera_node = pyrender.Node(camera=camera, matrix=camera_pose)
-            scene.add_node(camera_node)
-            self.add_point_lighting(scene, camera_node)
-            self.add_lighting(scene, camera_node)
+                camera_node = pyrender.Node(camera=camera, matrix=camera_pose)
+                scene.add_node(camera_node)
+                self.add_point_lighting(scene, camera_node)
+                self.add_lighting(scene, camera_node)
 
-            light_nodes = create_raymond_lights()
-            for node in light_nodes:
-                scene.add_node(node)
+                light_nodes = create_raymond_lights()
+                for node in light_nodes:
+                    scene.add_node(node)
 
-            color, rend_depth = renderer.render(scene, flags=pyrender.RenderFlags.RGBA)
-            color = color.astype(np.float32) / 255.0
-            renderer.delete()
-            return color
-        except Exception as e:
-            if isinstance(focal_length, torch.Tensor):
-                focal_length = focal_length.item()
-            focal_length = float(focal_length if focal_length is not None else self.focal_length)
+                color, rend_depth = renderer.render(scene, flags=pyrender.RenderFlags.RGBA)
+                color = color.astype(np.float32) / 255.0
+                renderer.delete()
+                return color
+            except Exception as e:
+                self.use_fallback = True
+
+        if isinstance(focal_length, torch.Tensor):
+            focal_length = focal_length.item()
+        focal_length = float(focal_length if focal_length is not None else self.focal_length)
+        
+        if hasattr(render_res, '__len__'):
+            w = int(render_res[0].item() if isinstance(render_res[0], torch.Tensor) else render_res[0])
+            h = int(render_res[1].item() if isinstance(render_res[1], torch.Tensor) else render_res[1])
+        else:
+            w, h = 256, 256
             
-            if hasattr(render_res, '__len__'):
-                w = int(render_res[0].item() if isinstance(render_res[0], torch.Tensor) else render_res[0])
-                h = int(render_res[1].item() if isinstance(render_res[1], torch.Tensor) else render_res[1])
-            else:
-                w, h = 256, 256
+        rgba = np.zeros((h, w, 4), dtype=np.float32)
+        cx, cy = w / 2.0, h / 2.0
+        
+        for v_arr, t_arr in zip(vertices, cam_t):
+            if isinstance(v_arr, torch.Tensor):
+                v_arr = v_arr.detach().cpu().numpy()
+            if isinstance(t_arr, torch.Tensor):
+                t_arr = t_arr.detach().cpu().numpy()
                 
-            rgba = np.zeros((h, w, 4), dtype=np.float32)
-            cx, cy = w / 2.0, h / 2.0
+            pts3d = v_arr + t_arr
             
-            for v_arr, t_arr in zip(vertices, cam_t):
-                if isinstance(v_arr, torch.Tensor):
-                    v_arr = v_arr.detach().cpu().numpy()
-                if isinstance(t_arr, torch.Tensor):
-                    t_arr = t_arr.detach().cpu().numpy()
-                    
-                pts3d = v_arr + t_arr
-                
-                z = np.maximum(pts3d[:, 2], 1e-5)
-                x2d = (focal_length * (pts3d[:, 0] / z) + cx).astype(np.int32)
-                y2d = (focal_length * (pts3d[:, 1] / z) + cy).astype(np.int32)
-                pts2d = np.stack([x2d, y2d], axis=1)
-                for face in self.faces[::3]:
-                    tri = pts2d[face]
-                    cv2.polylines(rgba, [tri], isClosed=True, color=(0.65, 0.74, 0.86, 0.8), thickness=1)
-                for p in pts2d[::5]:
-                    cv2.circle(rgba, tuple(p), 2, (0.2, 0.6, 1.0, 1.0), -1)
-            return rgba
+            z = np.maximum(pts3d[:, 2], 1e-5)
+            x2d = (focal_length * (pts3d[:, 0] / z) + cx).astype(np.int32)
+            y2d = (focal_length * (pts3d[:, 1] / z) + cy).astype(np.int32)
+            pts2d = np.stack([x2d, y2d], axis=1)
+            
+            # Fast vectorized drawing in 1 call instead of 512 loop iterations
+            tris = pts2d[self.faces[::3]]
+            cv2.polylines(rgba, tris, isClosed=True, color=(0.65, 0.74, 0.86, 0.8), thickness=1)
+            for p in pts2d[::5]:
+                cv2.circle(rgba, (int(p[0]), int(p[1])), 2, (0.2, 0.6, 1.0, 1.0), -1)
+        return rgba
 
     def add_lighting(self, scene, cam_node, color=np.ones(3), intensity=1.0):
         # from phalp.visualize.py_renderer import get_light_poses

@@ -82,8 +82,8 @@ def main():
     
     print(f"Processing {max_frames} frames with detector={args.body_detector}, stride={args.det_stride}, scale_inference={args.scale_inference}...")
     
-    last_pred_bboxes = None
-    last_pred_scores = None
+    last_boxes = None
+    last_right = None
 
     for frame_idx in tqdm(range(max_frames)):
         ret, frame = cap.read()
@@ -93,8 +93,8 @@ def main():
         img_cv2 = frame
         img = img_cv2.copy()[:, :, ::-1]
 
-        # Run body detector every N frames with optional resolution scaling for maximum speed
-        if frame_idx % args.det_stride == 0 or last_pred_bboxes is None:
+        # Run body detector & ViTPose keypoint detector every N frames for maximum speed
+        if frame_idx % args.det_stride == 0 or last_boxes is None:
             if args.scale_inference != 1.0:
                 det_h = int(height * args.scale_inference)
                 det_w = int(width * args.scale_inference)
@@ -112,43 +112,43 @@ def main():
                 pred_bboxes = pred_bboxes / args.scale_inference
 
             if len(pred_bboxes) > 0:
-                last_pred_bboxes = pred_bboxes
-                last_pred_scores = pred_scores
-        else:
-            pred_bboxes = last_pred_bboxes
-            pred_scores = last_pred_scores
+                vitposes_out = cpm.predict_pose(img, [np.concatenate([pred_bboxes, pred_scores[:, None]], axis=1)])
 
-        if pred_bboxes is None or len(pred_bboxes) == 0:
+                bboxes = []
+                is_right = []
+
+                for vitposes in vitposes_out:
+                    left_hand_keyp = vitposes['keypoints'][-42:-21]
+                    right_hand_keyp = vitposes['keypoints'][-21:]
+
+                    keyp = left_hand_keyp
+                    valid = keyp[:, 2] > 0.5
+                    if sum(valid) > 3:
+                        bboxes.append([keyp[valid, 0].min(), keyp[valid, 1].min(), keyp[valid, 0].max(), keyp[valid, 1].max()])
+                        is_right.append(0)
+                    
+                    keyp = right_hand_keyp
+                    valid = keyp[:, 2] > 0.5
+                    if sum(valid) > 3:
+                        bboxes.append([keyp[valid, 0].min(), keyp[valid, 1].min(), keyp[valid, 0].max(), keyp[valid, 1].max()])
+                        is_right.append(1)
+
+                if len(bboxes) > 0:
+                    last_boxes = np.stack(bboxes)
+                    last_right = np.stack(is_right)
+                else:
+                    last_boxes = None
+                    last_right = None
+            else:
+                last_boxes = None
+                last_right = None
+
+        if last_boxes is None or len(last_boxes) == 0:
             out.write(frame)
             continue
 
-        vitposes_out = cpm.predict_pose(img, [np.concatenate([pred_bboxes, pred_scores[:, None]], axis=1)])
-
-        bboxes = []
-        is_right = []
-
-        for vitposes in vitposes_out:
-            left_hand_keyp = vitposes['keypoints'][-42:-21]
-            right_hand_keyp = vitposes['keypoints'][-21:]
-
-            keyp = left_hand_keyp
-            valid = keyp[:, 2] > 0.5
-            if sum(valid) > 3:
-                bboxes.append([keyp[valid, 0].min(), keyp[valid, 1].min(), keyp[valid, 0].max(), keyp[valid, 1].max()])
-                is_right.append(0)
-            
-            keyp = right_hand_keyp
-            valid = keyp[:, 2] > 0.5
-            if sum(valid) > 3:
-                bboxes.append([keyp[valid, 0].min(), keyp[valid, 1].min(), keyp[valid, 0].max(), keyp[valid, 1].max()])
-                is_right.append(1)
-
-        if len(bboxes) == 0:
-            out.write(frame)
-            continue
-
-        boxes = np.stack(bboxes)
-        right = np.stack(is_right)
+        boxes = last_boxes
+        right = last_right
 
         dataset = ViTDetDataset(model_cfg, img_cv2, boxes, right, rescale_factor=args.rescale_factor)
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=8, shuffle=False, num_workers=0)
