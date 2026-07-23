@@ -14,6 +14,35 @@ from hamer.datasets.vitdet_dataset import ViTDetDataset, DEFAULT_MEAN, DEFAULT_S
 from hamer.utils.renderer import Renderer, cam_crop_to_full
 from vitpose_model import ViTPoseModel
 
+import threading
+import queue
+
+class AsyncVideoWriter:
+    def __init__(self, filename, fourcc, fps, frame_size, queue_size=256):
+        self.writer = cv2.VideoWriter(filename, fourcc, fps, frame_size)
+        self.queue = queue.Queue(maxsize=queue_size)
+        self.stopped = False
+        self.thread = threading.Thread(target=self._write_loop, daemon=True)
+        self.thread.start()
+
+    def _write_loop(self):
+        while not self.stopped or not self.queue.empty():
+            try:
+                frame = self.queue.get(timeout=0.1)
+                if frame is not None:
+                    self.writer.write(frame)
+                self.queue.task_done()
+            except queue.Empty:
+                continue
+
+    def write(self, frame):
+        self.queue.put(frame)
+
+    def release(self):
+        self.stopped = True
+        self.thread.join()
+        self.writer.release()
+
 LIGHT_BLUE=(0.65098039,  0.74117647,  0.85882353)
 
 def main():
@@ -86,7 +115,7 @@ def main():
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(args.out_video, fourcc, fps, (width, height))
+    out = AsyncVideoWriter(args.out_video, fourcc, fps, (width, height))
 
     max_frames = total_frames
     if args.max_seconds > 0:
