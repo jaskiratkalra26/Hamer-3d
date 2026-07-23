@@ -110,12 +110,18 @@ class HandTracker3D:
 
             det_out = self.detector(img_det)
             det_instances = det_out['instances']
-            valid_idx = (det_instances.pred_classes == 0) & (det_instances.scores > 0.5)
-            pred_bboxes = det_instances.pred_boxes.tensor[valid_idx].cpu().numpy()
-            pred_scores = det_instances.scores[valid_idx].cpu().numpy()
+            valid_idx = (det_instances.pred_classes == 0) & (det_instances.scores > 0.15)
 
-            if self.scale_inference != 1.0 and len(pred_bboxes) > 0:
-                pred_bboxes = pred_bboxes / self.scale_inference
+            if sum(valid_idx) == 0:
+                self.last_boxes = np.array([[0, 0, width, height], [0, 0, width, height]], dtype=np.float32)
+                self.last_right = np.array([0, 1], dtype=np.float32)
+                pred_bboxes = []
+            else:
+                pred_bboxes = det_instances.pred_boxes.tensor[valid_idx].cpu().numpy()
+                pred_scores = det_instances.scores[valid_idx].cpu().numpy()
+    
+                if self.scale_inference != 1.0 and len(pred_bboxes) > 0:
+                    pred_bboxes = pred_bboxes / self.scale_inference
 
             if len(pred_bboxes) > 0:
                 vitposes_out = self.cpm.predict_pose(img, [np.concatenate([pred_bboxes, pred_scores[:, None]], axis=1)])
@@ -128,14 +134,14 @@ class HandTracker3D:
                     right_hand_keyp = vitposes['keypoints'][-21:]
 
                     keyp = left_hand_keyp
-                    valid = keyp[:, 2] > 0.5
-                    if sum(valid) > 3:
+                    valid = keyp[:, 2] > 0.1
+                    if sum(valid) > 0:
                         bboxes.append([keyp[valid, 0].min(), keyp[valid, 1].min(), keyp[valid, 0].max(), keyp[valid, 1].max()])
                         is_right.append(0)
 
                     keyp = right_hand_keyp
-                    valid = keyp[:, 2] > 0.5
-                    if sum(valid) > 3:
+                    valid = keyp[:, 2] > 0.1
+                    if sum(valid) > 0:
                         bboxes.append([keyp[valid, 0].min(), keyp[valid, 1].min(), keyp[valid, 0].max(), keyp[valid, 1].max()])
                         is_right.append(1)
 
