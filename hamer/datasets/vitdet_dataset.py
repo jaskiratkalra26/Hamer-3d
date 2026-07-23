@@ -60,16 +60,11 @@ class ViTDetDataset(torch.utils.data.Dataset):
         flip = right == 0
 
         # 3. generate image patch
-        # if use_skimage_antialias:
         cvimg = self.img_cv2.copy()
-        if True:
-            # Blur image to avoid aliasing artifacts
-            downsampling_factor = ((bbox_size*1.0) / patch_width)
-            print(f'{downsampling_factor=}')
-            downsampling_factor = downsampling_factor / 2.0
-            if downsampling_factor > 1.1:
-                cvimg  = gaussian(cvimg, sigma=(downsampling_factor-1)/2, channel_axis=2, preserve_range=True)
-
+        downsampling_factor = ((bbox_size*1.0) / patch_width) / 2.0
+        if downsampling_factor > 1.1:
+            ksize = int(2 * round((downsampling_factor - 1) / 2) + 1)
+            cvimg = cv2.GaussianBlur(cvimg, (ksize, ksize), 0)
 
         img_patch_cv, trans = generate_image_patch_cv2(cvimg,
                                                     center_x, center_y,
@@ -80,9 +75,10 @@ class ViTDetDataset(torch.utils.data.Dataset):
         img_patch_cv = img_patch_cv[:, :, ::-1]
         img_patch = convert_cvimg_to_tensor(img_patch_cv)
 
-        # apply normalization
-        for n_c in range(min(self.img_cv2.shape[2], 3)):
-            img_patch[n_c, :, :] = (img_patch[n_c, :, :] - self.mean[n_c]) / self.std[n_c]
+        # apply normalization (vectorized)
+        mean_t = torch.tensor(self.mean, dtype=img_patch.dtype).view(3, 1, 1)
+        std_t = torch.tensor(self.std, dtype=img_patch.dtype).view(3, 1, 1)
+        img_patch = (img_patch - mean_t) / std_t
 
         item = {
             'img': img_patch,
