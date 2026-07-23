@@ -1,0 +1,15 @@
+torch>=2.0.0
+torchvision
+numpy<2.0.0
+setuptools<70
+pyglet<2.0.0
+opencv-python
+trimesh
+pyrender
+tqdm
+gdown
+ninja
+wheel
+scikit-image
+yacs
+omegaconf
