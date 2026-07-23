@@ -25,17 +25,21 @@ git submodule update --init --recursive || true
 python3 -m venv .venv_hand_tracker
 source .venv_hand_tracker/bin/activate
 pip install --upgrade pip
-pip install "setuptools<70" "numpy<2.0.0" "pyglet<2.0.0" wheel ninja gdown
+pip install "setuptools<70" "numpy==1.26.4" "pyglet<2.0.0" wheel ninja gdown
 
 # Install PyTorch CUDA 12.1
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 
-# Install Detectron2, Chumpy, MMCV, ViTPose
-MAX_JOBS=1 pip install 'git+https://github.com/facebookresearch/detectron2.git' --no-build-isolation
-MAX_JOBS=1 pip install 'git+https://github.com/mattloper/chumpy' --no-build-isolation
-MAX_JOBS=1 pip install mmcv --no-build-isolation
-MAX_JOBS=1 pip install -e .[all] --no-build-isolation
-MAX_JOBS=1 pip install -v -e third-party/ViTPose
+# Install pre-compiled MMCV wheel (3 seconds, NO C++ compilation!)
+pip install "numpy==1.26.4" "setuptools<70"
+pip install mmcv==1.7.2 -f https://download.openmmlab.com/mmcv/dist/cu121/torch2.1.0/index.html || MAX_JOBS=1 pip install mmcv==1.7.2 --no-build-isolation --no-deps
+
+# Install Detectron2, Chumpy, ViTPose with strict numpy<2.0.0 enforcement
+MAX_JOBS=1 pip install 'git+https://github.com/facebookresearch/detectron2.git' --no-build-isolation --no-deps
+MAX_JOBS=1 pip install 'git+https://github.com/mattloper/chumpy' --no-build-isolation --no-deps
+pip install "numpy==1.26.4" "setuptools<70"
+pip install -e .[all] --no-build-isolation
+MAX_JOBS=1 pip install -v --no-deps -e third-party/ViTPose
 
 # 3. Download Model Checkpoints & MANO Weights
 echo "[3/4] Downloading HaMeR & MANO model weights..."

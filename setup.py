@@ -7,7 +7,9 @@ setup(
     packages=find_packages(),
     install_requires=[
         'gdown',
-        'numpy',
+        'numpy<2.0.0',
+        'setuptools<70',
+        'pyglet<2.0.0',
         'opencv-python',
         'pyrender',
         'pytorch-lightning',
@@ -16,12 +18,8 @@ setup(
         'torch',
         'torchvision',
         'yacs',
-        'detectron2',
-        'chumpy',
-        'mmcv',
         'timm',
         'einops',
-        'xtcocotools',
         'pandas',
     ],
     extras_require={

@@ -13,15 +13,16 @@ echo "[2/4] Setting up Python virtual environment..."
 python3 -m venv .hamer
 source .hamer/bin/activate
 ./.hamer/bin/pip install --upgrade pip
-./.hamer/bin/pip install wheel ninja gdown setuptools
+./.hamer/bin/pip install "setuptools<70" "numpy==1.26.4" "pyglet<2.0.0" wheel ninja gdown
 
 echo "[3/4] Installing PyTorch and HaMeR dependencies..."
 ./.hamer/bin/pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
-./.hamer/bin/pip install 'git+https://github.com/facebookresearch/detectron2.git' --no-build-isolation
-./.hamer/bin/pip install 'git+https://github.com/mattloper/chumpy' --no-build-isolation
-./.hamer/bin/pip install mmcv --no-build-isolation
-./.hamer/bin/pip install -e .[all]
-./.hamer/bin/pip install -v -e third-party/ViTPose
+./.hamer/bin/pip install mmcv==1.7.2 -f https://download.openmmlab.com/mmcv/dist/cu121/torch2.1.0/index.html || MAX_JOBS=1 ./.hamer/bin/pip install mmcv==1.7.2 --no-build-isolation --no-deps
+MAX_JOBS=1 ./.hamer/bin/pip install 'git+https://github.com/facebookresearch/detectron2.git' --no-build-isolation --no-deps
+MAX_JOBS=1 ./.hamer/bin/pip install 'git+https://github.com/mattloper/chumpy' --no-build-isolation --no-deps
+./.hamer/bin/pip install "numpy==1.26.4" "setuptools<70"
+./.hamer/bin/pip install -e .[all] --no-build-isolation
+MAX_JOBS=1 ./.hamer/bin/pip install -v --no-deps -e third-party/ViTPose
 
 echo "[4/4] Downloading models and data..."
 # 1. Download demo data
