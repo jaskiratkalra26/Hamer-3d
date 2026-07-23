@@ -24,6 +24,7 @@ def main():
     parser.add_argument('--body_detector', type=str, default='vitdet', choices=['vitdet', 'regnety'])
     parser.add_argument('--max_seconds', type=int, default=0, help='Max seconds of video to process')
     parser.add_argument('--det_stride', type=int, default=3, help='Run body detector every N frames for speed')
+    parser.add_argument('--scale_inference', type=float, default=1.0, help='Downscale frame for detector inference for speed (e.g. 0.5 for 540p, 0.67 for 720p)')
     args = parser.parse_args()
 
     # Setup device
@@ -79,7 +80,7 @@ def main():
     if args.max_seconds > 0:
         max_frames = min(total_frames, int(fps * args.max_seconds))
     
-    print(f"Processing {max_frames} frames with detector stride={args.det_stride}...")
+    print(f"Processing {max_frames} frames with detector={args.body_detector}, stride={args.det_stride}, scale_inference={args.scale_inference}...")
     
     last_pred_bboxes = None
     last_pred_scores = None
@@ -92,13 +93,24 @@ def main():
         img_cv2 = frame
         img = img_cv2.copy()[:, :, ::-1]
 
-        # Run heavy ViTDet body detector every N frames for maximum speed
+        # Run body detector every N frames with optional resolution scaling for maximum speed
         if frame_idx % args.det_stride == 0 or last_pred_bboxes is None:
-            det_out = detector(img_cv2)
+            if args.scale_inference != 1.0:
+                det_h = int(height * args.scale_inference)
+                det_w = int(width * args.scale_inference)
+                img_det = cv2.resize(img_cv2, (det_w, det_h))
+            else:
+                img_det = img_cv2
+
+            det_out = detector(img_det)
             det_instances = det_out['instances']
             valid_idx = (det_instances.pred_classes == 0) & (det_instances.scores > 0.5)
             pred_bboxes = det_instances.pred_boxes.tensor[valid_idx].cpu().numpy()
             pred_scores = det_instances.scores[valid_idx].cpu().numpy()
+
+            if args.scale_inference != 1.0 and len(pred_bboxes) > 0:
+                pred_bboxes = pred_bboxes / args.scale_inference
+
             if len(pred_bboxes) > 0:
                 last_pred_bboxes = pred_bboxes
                 last_pred_scores = pred_scores
@@ -150,7 +162,7 @@ def main():
         for batch in dataloader:
             batch = recursive_to(batch, device)
             with torch.no_grad():
-                with torch.cuda.amp.autocast(enabled=torch.cuda.is_available()):
+                with torch.amp.autocast('cuda', enabled=torch.cuda.is_available()):
                     out_hamer = model(batch)
 
             multiplier = (2*batch['right']-1)
