@@ -402,8 +402,8 @@ class Renderer:
             pts3d = v_arr + t_arr
             
             z = np.maximum(pts3d[:, 2], 1e-5)
-            x2d = (focal_length * (pts3d[:, 0] / z) + cx).astype(np.int32)
-            y2d = (focal_length * (pts3d[:, 1] / z) + cy).astype(np.int32)
+            x2d = np.nan_to_num((focal_length * (pts3d[:, 0] / z) + cx), nan=cx, posinf=w, neginf=0).astype(np.int32)
+            y2d = np.nan_to_num((focal_length * (pts3d[:, 1] / z) + cy), nan=cy, posinf=h, neginf=0).astype(np.int32)
             pts2d = np.stack([x2d, y2d], axis=1)
             
             # Fast vectorized drawing in 1 call instead of 512 loop iterations

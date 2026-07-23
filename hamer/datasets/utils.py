@@ -21,8 +21,8 @@ def expand_to_aspect_ratio(input_shape, target_aspect_ratio=None):
     except (ValueError, TypeError):
         return input_shape
 
-    w_t, h_t = target_aspect_ratio
-    if h / w < h_t / w_t:
+    w_safe = max(w, 1e-5)
+    if h / w_safe < h_t / w_t:
         h_new = max(w * h_t / w_t, h)
         w_new = w
     else:
