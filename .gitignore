@@ -8,6 +8,12 @@
 /example_data/downloaded*
 *.tar
 *.tar.gz
+*.mp4
+*.avi
+*.zip
+.hamer/
+.venv*/
+H2ONet/
 /discord_sandbox/
 /demo_out/
 token_channel.csv
